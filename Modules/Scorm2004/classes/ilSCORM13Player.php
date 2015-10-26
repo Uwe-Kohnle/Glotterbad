@@ -1033,6 +1033,11 @@ class ilSCORM13Player
 			switch ($k)
 			{
 				case "node":
+					//glotterbad
+					include_once './Modules/Scorm2004/classes/class.ilSCORM2004TrackingExchange.php';
+					ilSCORM2004TrackingExchange::initTrackingData($userId, $packageId);
+					
+					
 					$q = 'SELECT cmi_node.* 
 						FROM cmi_node 
 						INNER JOIN cp_node ON cmi_node.cp_node_id = cp_node.cp_node_id

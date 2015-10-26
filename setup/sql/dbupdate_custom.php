@@ -96,3 +96,15 @@ if( !$ilDB->tableExists('sahs_exchange_object') )
 	$ilDB->addPrimaryKey('sahs_exchange_object',array('target_obj_id', 'target_sco_id', 'target_field_id'));
 }	
 ?>
+<#4>
+<?php
+if( !$ilDB->tableColumnExists('sahs_exchange_pattern', 'c_timestamp') )
+{
+	$ilDB->addTableColumn('sahs_exchange_pattern', 'c_timestamp',
+		array(
+			'type' => 'timestamp',
+			'notnull' => true
+		)
+	);
+}
+?>

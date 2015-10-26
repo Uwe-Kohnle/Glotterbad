@@ -945,6 +945,11 @@ class ilObjSCORMLearningModuleGUI extends ilObjSAHSLearningModuleGUI
 			$ilTabs->addSubTabTarget("cont_tracking_modify",
 				$this->ctrl->getLinkTarget($this, "modifyTrackingItems"), array("edit", ""),
 				get_class($this));
+			if (ilObjSAHSLearningModule::_lookupSubType($this->object->getId()) == "scorm2004") {
+				$ilTabs->addSubTabTarget("cont_tracking_exchange",
+					$this->ctrl->getLinkTarget($this, "exchangeTrackingItems"), array("edit", ""),
+					get_class($this));
+			}
 		}
 	}
 

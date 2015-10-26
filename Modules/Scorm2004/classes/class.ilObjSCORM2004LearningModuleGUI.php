@@ -2797,5 +2797,242 @@ $this->ctrl->redirect($this, "properties");
 	}
 
 
+	function exchangeTrackingItems() {
+		global $ilAccess,$ilUser;
+		if($ilAccess->checkAccess("edit_learning_progress", "", $_GET["ref_id"])) {
+			include_once('./Services/PrivacySecurity/classes/class.ilPrivacySettings.php');
+			$privacy = ilPrivacySettings::_getInstance();
+			if(!$privacy->enabledSahsProtocolData())
+			{
+				$this->ilias->raiseError($this->lng->txt('permission_denied'), $this->ilias->error_obj->MESSAGE);
+			}
+
+			global $ilTabs, $ilToolbar, $lng, $ilCtrl;
+
+			//set tabs
+			ilObjSCORMLearningModuleGUI::setSubTabs();
+			$ilTabs->setTabActive('cont_tracking_data');
+			$ilTabs->setSubTabActive('cont_tracking_exchange');
+
+			include_once './Modules/Scorm2004/classes/class.ilSCORM2004TrackingExchange.php';
+			$patternExists = ilSCORM2004TrackingExchange::checkIfPatternExists();
+			$suspendData = ilSCORM2004TrackingExchange::getSuspend_data($this->object->getId(),$ilUser->getId());
+			$writable = ilSCORM2004TrackingExchange::checkIfWritable();
+
+			//set buttons
+			include_once './Services/UIComponent/Toolbar/classes/class.ilToolbarGUI.php';
+			if ($suspendData!="") {
+				$ilToolbar->addButton(
+					$this->lng->txt('cont_tracking_exchange_pattern_create'),
+					$this->ctrl->getLinkTarget($this, 'exchangeTrackingPatternCreate')
+				);
+			}
+			if ($patternExists && $writable) {
+					$ilToolbar->addButton(
+					$this->lng->txt('cont_tracking_exchange_select'),
+					$this->ctrl->getLinkTarget($this, 'exchangeTrackingSelect')
+				);
+			}
+
+			//content
+			include_once("Services/Form/classes/class.ilPropertyFormGUI.php");
+			$this->form = new ilPropertyFormGUI();
+			if ($patternExists) {
+				$this->form->setFormAction($ilCtrl->getFormAction($this));
+				$this->form->setTitle($this->lng->txt("cont_tracking_exchange_properties"));
+				$this->form->setDescription($this->lng->txt("cont_tracking_exchange_properties_info"));
+				$ne = new ilNonEditableValueGUI($this->lng->txt("cont_tracking_pattern_writable"), "");
+				if ($writable) $ne->setValue($this->lng->txt("yes"));
+				else $ne->setValue($this->lng->txt("no"));
+				// $ne->setValue(wordwrap(ilSCORM2004TrackingExchange::getSuspend_data($this->object->getId(),$ilUser->getId()),50,"\n",true));
+				$this->form->addItem($ne);
+		// $this->form->addItem($cb);
+				// $this->form->addCommandButton("exchangeTrackingItemsSave", $lng->txt("save"));
+		// $this->form->addCommandButton("saveProperties", $lng->txt("save"));
+		// $sh = new ilFormSectionHeaderGUI();
+		// $sh->setTitle($this->lng->txt("activation"));
+		// $this->form->addItem($sh);
+			} else {
+				if ($suspendData=="") {
+					$this->form->setTitle($this->lng->txt("cont_tracking_exchange_suspend_missing"));
+					$this->form->setDescription($this->lng->txt("cont_tracking_exchange_suspend_missing_info"));
+				} else {
+					$this->form->setTitle($this->lng->txt("cont_tracking_exchange_pattern_missing"));
+					$this->form->setDescription($this->lng->txt("cont_tracking_exchange_pattern_missing_info"));
+				}
+			}
+			$this->tpl->setContent($this->form->getHTML());
+
+			// include_once './Modules/Scorm2004/classes/class.ilSCORM2004TrackingExchangeOverviewGUI.php';
+			// $tbl = new ilSCORM2004TrackingExchangeOverviewGUI($this->object->getId(), $this, 'exchangetrackingItems');
+			// $tbl->parse();
+			// $this->tpl->setContent($tbl->getHTML());
+		}
+		
+	}
+	// protected function exchangeTrackingItemsSave() {
+	// }
+	protected function exchangeTrackingPatternCreate()
+	{
+		global $ilTabs, $ilCtrl, $ilUser;
+
+		$ilTabs->clearTargets();
+		$ilTabs->setBackTarget($this->lng->txt('back'),$this->ctrl->getLinkTarget($this,'exchangeTrackingItems'));
+
+		include_once './Modules/Scorm2004/classes/class.ilSCORM2004TrackingExchange.php';
+
+		//content
+		include_once("Services/Form/classes/class.ilPropertyFormGUI.php");
+		$this->form = new ilPropertyFormGUI();
+		$this->form->setFormAction($ilCtrl->getFormAction($this));
+		$this->form->setTitle($this->lng->txt("cont_tracking_exchange_pattern_create"));
+		$this->form->setDescription($this->lng->txt("cont_tracking_exchange_pattern_create_info"));
+		if (ilSCORM2004TrackingExchange::checkIfPatternExists() == true) {
+			$pattern_saved = ilSCORM2004TrackingExchange::getPatternAr($this->object->getId());
+			$pattern_saved_essentials=ilSCORM2004TrackingExchange::getPatternEssentials($pattern_saved["pattern"]);
+			$ne = new ilNonEditableValueGUI($this->lng->txt("cont_tracking_pattern_saved_timestamp"), "");
+			$ne->setValue($pattern_saved["c_timestamp"]);
+			$this->form->addItem($ne);
+			$ne = new ilNonEditableValueGUI($this->lng->txt("cont_tracking_pattern_fields_count"), "");
+			$ne->setValue($pattern_saved_essentials["p2_i_counter_fields"]);
+			$this->form->addItem($ne);
+			$ne = new ilNonEditableValueGUI($this->lng->txt("cont_tracking_pattern_fields"), "");
+			$sv = "";
+			for ($i=0; $i<count($pattern_saved_essentials["p2_pos"]); $i++) {
+				$sv .= $pattern_saved_essentials["p2_pos"][$i] . ": " . $pattern_saved_essentials["p2_c".$pattern_saved_essentials["p2_pos"][$i]] . "\n";
+			}
+			$ne->setValue($sv);
+			$this->form->addItem($ne);
+			$ti = new ilTextAreaInputGUI($this->lng->txt("cont_tracking_pattern_saved"), "Fobject_pattern_saved");
+			$ti->setValue($pattern_saved["pattern"]);
+			$this->form->addItem($ti);
+		// $ne = new ilNonEditableValueGUI($this->lng->txt("cont_tracking_pattern_to_save"), "");
+		// $ne->setValue(wordwrap(ilSCORM2004TrackingExchange::getSuspend_data($this->object->getId(),$ilUser->getId()),50,"\n",true));
+		// $this->form->addItem($ne);
+		}
+		$ti = new ilTextAreaInputGUI($this->lng->txt("cont_tracking_pattern_to_save"), "Fobject_pattern");
+		$ti->setValue(ilSCORM2004TrackingExchange::getSuspend_data($this->object->getId(),$ilUser->getId()));
+		$this->form->addItem($ti);
+		$cb = new ilCheckboxInputGUI($this->lng->txt("cont_tracking_pattern_use_suspend"), "cobj_suspend");
+		$cb->setValue("y");
+		$cb->setChecked(true);
+		$cb->setInfo($this->lng->txt("cont_tracking_pattern_use_suspend_info"));
+		$this->form->addItem($cb);
+		$cb = new ilCheckboxInputGUI($this->lng->txt("cont_tracking_pattern_writable"), "cobj_writable");
+		$cb->setValue("y");
+		$cb->setChecked(false);
+		if ($pattern_saved["writable"]==1) $cb->setChecked(true);
+		$cb->setInfo($this->lng->txt("cont_tracking_pattern_writable_info"));
+		$this->form->addItem($cb);
+		$this->form->addCommandButton("exchangeTrackingPatternCreateSave", $this->lng->txt("cont_tracking_pattern_create_as_new_pattern"));
+		$this->tpl->setContent($this->form->getHTML());
+	}
+	protected function exchangeTrackingPatternCreateSave() {
+		include_once './Modules/Scorm2004/classes/class.ilSCORM2004TrackingExchange.php';
+		$b_useSuspend = ilUtil::yn2tf($_POST["cobj_suspend"]);
+		$s_pattern = $_POST["Fobject_pattern"];
+		$b_writable = ilUtil::yn2tf($_POST["cobj_writable"]);
+		$b_result = ilSCORM2004TrackingExchange::patternCreate($b_useSuspend, 0, $s_pattern, $b_writable);
+		ilUtil::sendSuccess($this->lng->txt("msg_obj_modified"), true);
+		$this->ctrl->redirect($this, "exchangeTrackingPatternCreate");
+
+	}
+	protected function exchangeTrackingSelect() {
+		global $ilTabs, $ilCtrl;
+
+		$ilTabs->clearTargets();
+		$ilTabs->setBackTarget($this->lng->txt('back'),$this->ctrl->getLinkTarget($this,'exchangeTrackingItems'));
+
+		include_once './Modules/Scorm2004/classes/class.ilSCORM2004TrackingExchange.php';
+		$a_lm = ilSCORM2004TrackingExchange::getLearningModulesWithPattern();
+		$a_saved_objects = ilSCORM2004TrackingExchange::getSelectedExchangeObjects($this->object->getId());
+		// $a_lm_selected_saved=array();
+		$a_lm_selected=array();
+		if(isset($_GET["lm"])) $a_lm_selected=explode(',',$_GET["lm"]);
+		else {
+			foreach($a_saved_objects as $key => $value) {
+				$a_tmp = explode('.',$value);
+				$lmtmp = $a_tmp[0];
+				if (!in_array($lmtmp,$a_lm_selected)) $a_lm_selected[] = $lmtmp;
+			}
+		}
+
+		//content
+		include_once("Services/Form/classes/class.ilPropertyFormGUI.php");
+		$this->form = new ilPropertyFormGUI();
+		$this->form->setFormAction($ilCtrl->getFormAction($this));
+		$this->form->setTitle($this->lng->txt("cont_tracking_exchange_select"));
+		$this->form->setDescription($this->lng->txt("cont_tracking_exchange_select_info"));
+		$sh = new ilFormSectionHeaderGUI();
+		$sh->setTitle($this->lng->txt("cont_tracking_select_lm"));
+		$this->form->addItem($sh);
+		foreach($a_lm as $lm => $title)
+		{
+			$cb = new ilCheckboxInputGUI($title, "cobj_".$lm);
+			$cb->setValue("y");
+			$cb->setChecked(false);
+			if (in_array($lm,$a_lm_selected)) $cb->setChecked(true);// && ilUtil::yn2tf($_POST["cobj_".$lm])==true
+			$this->form->addItem($cb);
+		}
+		
+		if (count($a_lm_selected)>0) {
+			$sh = new ilFormSectionHeaderGUI();
+			$sh->setTitle($this->lng->txt("cont_tracking_select_field"));
+			$this->form->addItem($sh);
+			$pattern_saved=ilSCORM2004TrackingExchange::getPatternAr($this->object->getId());
+			$pattern_saved_essentials=ilSCORM2004TrackingExchange::getPatternEssentials($pattern_saved["pattern"]);
+			$possibleExchangeObjects = ilSCORM2004TrackingExchange::getPossibleExchangeObjects($a_lm_selected);
+			$selectedExchangeObjects = ilSCORM2004TrackingExchange::getSelectedExchangeObjects($this->object->getId());
+			// $sv = "";
+			for ($i=0; $i<count($pattern_saved_essentials["p2_pos"]); $i++) {
+				$options = array("no" => $this->lng->txt("cont_tracking_exchange_select_no"));
+				foreach($possibleExchangeObjects as $key => $title) {
+					// $options[] = ($key => $value);
+					$options[$key] = $title;
+				}
+				$si = new ilSelectInputGUI($pattern_saved_essentials["p2_c".$pattern_saved_essentials["p2_pos"][$i]], 'cobj_f'.$pattern_saved_essentials["p2_pos"][$i]);
+				$si->setOptions($options);
+				foreach($selectedExchangeObjects as $key => $value) {
+					$a_tmp = explode('.',$key);
+					$fieldtmp = $a_tmp[1];
+					if ($fieldtmp == $pattern_saved_essentials["p2_pos"][$i]) $si->setValue($value);
+				}
+				// $si->setValue($this->object->getDefaultLessonMode());
+				$this->form->addItem($si);
+			}
+			$this->form->addCommandButton("exchangeTrackingSelectSave", $this->lng->txt("cont_tracking_select_field_save"));
+		} else {
+			$this->form->addCommandButton("exchangeTrackingSelectSave", $this->lng->txt("cont_tracking_select_lm_save"));
+		}
+		$this->tpl->setContent($this->form->getHTML());
+	
+	}
+
+	protected function exchangeTrackingSelectSave() {
+		include_once './Modules/Scorm2004/classes/class.ilSCORM2004TrackingExchange.php';
+		$a_lm = ilSCORM2004TrackingExchange::getLearningModulesWithPattern();
+		$a_lm_selected=array();
+		foreach($a_lm as $lm => $title) {
+			if (ilUtil::yn2tf($_POST["cobj_".$lm])) $a_lm_selected[] = $lm;
+		}
+		$b_field = false;
+		$ar_save = array();
+		$pattern_saved=ilSCORM2004TrackingExchange::getPatternAr($this->object->getId());
+		$pattern_saved_essentials=ilSCORM2004TrackingExchange::getPatternEssentials($pattern_saved["pattern"]);
+		for ($i=0; $i<count($pattern_saved_essentials["p2_pos"]); $i++) {
+			if (isset($_POST["cobj_f".$pattern_saved_essentials["p2_pos"][$i]])) {
+				$b_field = true;
+				if ($_POST["cobj_f".$pattern_saved_essentials["p2_pos"][$i]]!="no") {
+					$ar_save[$pattern_saved_essentials["p2_pos"][$i]] = $_POST["cobj_f".$pattern_saved_essentials["p2_pos"][$i]];
+				}
+			}
+		}
+		if ($b_field == true) {
+			ilSCORM2004TrackingExchange::exchangeTrackingSelectSave($ar_save);
+			ilUtil::sendSuccess($this->lng->txt("msg_obj_modified"), true);
+		}
+		$this->ctrl->redirect($this, "exchangeTrackingSelect&lm=".implode(",",$a_lm_selected));
+	}
+	
 }
 ?>
