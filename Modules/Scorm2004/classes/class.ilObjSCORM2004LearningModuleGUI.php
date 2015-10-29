@@ -2833,6 +2833,12 @@ $this->ctrl->redirect($this, "properties");
 					$this->ctrl->getLinkTarget($this, 'exchangeTrackingSelect')
 				);
 			}
+			if ($patternExists) {
+					$ilToolbar->addButton(
+					$this->lng->txt('cont_tracking_exchange_delete'),
+					$this->ctrl->getLinkTarget($this, 'deletePatternAndObjectsDataForm')
+				);
+			}
 
 			//content
 			include_once("Services/Form/classes/class.ilPropertyFormGUI.php");
@@ -2841,13 +2847,19 @@ $this->ctrl->redirect($this, "properties");
 				$this->form->setFormAction($ilCtrl->getFormAction($this));
 				$this->form->setTitle($this->lng->txt("cont_tracking_exchange_properties"));
 				$this->form->setDescription($this->lng->txt("cont_tracking_exchange_properties_info"));
-				$ne = new ilNonEditableValueGUI($this->lng->txt("cont_tracking_pattern_writable"), "");
-				if ($writable) $ne->setValue($this->lng->txt("yes"));
-				else $ne->setValue($this->lng->txt("no"));
-				// $ne->setValue(wordwrap(ilSCORM2004TrackingExchange::getSuspend_data($this->object->getId(),$ilUser->getId()),50,"\n",true));
-				$this->form->addItem($ne);
+				$cb = new ilCheckboxInputGUI($this->lng->txt("cont_tracking_pattern_writable"), "cobj_writable");
+				$cb->setValue("y");
+				$cb->setChecked(false);
+				if ($writable) $cb->setChecked(true);
+				$cb->setInfo($this->lng->txt("cont_tracking_pattern_writable_info"));
+				$this->form->addItem($cb);
+				// $ne = new ilNonEditableValueGUI($this->lng->txt("cont_tracking_pattern_writable"), "");
+				// if ($writable) $ne->setValue($this->lng->txt("yes"));
+				// else $ne->setValue($this->lng->txt("no"));
+				// // $ne->setValue(wordwrap(ilSCORM2004TrackingExchange::getSuspend_data($this->object->getId(),$ilUser->getId()),50,"\n",true));
+				// $this->form->addItem($ne);
 		// $this->form->addItem($cb);
-				// $this->form->addCommandButton("exchangeTrackingItemsSave", $lng->txt("save"));
+				$this->form->addCommandButton("exchangeTrackingItemsSave", $lng->txt("save"));
 		// $this->form->addCommandButton("saveProperties", $lng->txt("save"));
 		// $sh = new ilFormSectionHeaderGUI();
 		// $sh->setTitle($this->lng->txt("activation"));
@@ -2858,7 +2870,7 @@ $this->ctrl->redirect($this, "properties");
 					$this->form->setDescription($this->lng->txt("cont_tracking_exchange_suspend_missing_info"));
 				} else {
 					$this->form->setTitle($this->lng->txt("cont_tracking_exchange_pattern_missing"));
-					$this->form->setDescription($this->lng->txt("cont_tracking_exchange_pattern_missing_info"));
+					$this->form->setDescription($this->lng->txt("cont_tracking_exchange_pattern_missing_info").'<br/>'.$this->lng->txt("cont_tracking_exchange_pattern_create_info"));
 				}
 			}
 			$this->tpl->setContent($this->form->getHTML());
@@ -2870,8 +2882,14 @@ $this->ctrl->redirect($this, "properties");
 		}
 		
 	}
-	// protected function exchangeTrackingItemsSave() {
-	// }
+	protected function exchangeTrackingItemsSave() {
+		include_once './Modules/Scorm2004/classes/class.ilSCORM2004TrackingExchange.php';
+		$b_writable = ilUtil::yn2tf($_POST["cobj_writable"]);
+		$b_result = ilSCORM2004TrackingExchange::patternPropertiesUpdate(0, $b_writable);
+		ilUtil::sendSuccess($this->lng->txt("msg_obj_modified"), true);
+		$this->ctrl->redirect($this, "exchangeTrackingItems");
+	}
+
 	protected function exchangeTrackingPatternCreate()
 	{
 		global $ilTabs, $ilCtrl, $ilUser;
@@ -2918,12 +2936,12 @@ $this->ctrl->redirect($this, "properties");
 		$cb->setChecked(true);
 		$cb->setInfo($this->lng->txt("cont_tracking_pattern_use_suspend_info"));
 		$this->form->addItem($cb);
-		$cb = new ilCheckboxInputGUI($this->lng->txt("cont_tracking_pattern_writable"), "cobj_writable");
-		$cb->setValue("y");
-		$cb->setChecked(false);
-		if ($pattern_saved["writable"]==1) $cb->setChecked(true);
-		$cb->setInfo($this->lng->txt("cont_tracking_pattern_writable_info"));
-		$this->form->addItem($cb);
+		// $cb = new ilCheckboxInputGUI($this->lng->txt("cont_tracking_pattern_writable"), "cobj_writable");
+		// $cb->setValue("y");
+		// $cb->setChecked(false);
+		// if ($pattern_saved["writable"]==1) $cb->setChecked(true);
+		// $cb->setInfo($this->lng->txt("cont_tracking_pattern_writable_info"));
+		// $this->form->addItem($cb);
 		$this->form->addCommandButton("exchangeTrackingPatternCreateSave", $this->lng->txt("cont_tracking_pattern_create_as_new_pattern"));
 		$this->tpl->setContent($this->form->getHTML());
 	}
@@ -2931,8 +2949,8 @@ $this->ctrl->redirect($this, "properties");
 		include_once './Modules/Scorm2004/classes/class.ilSCORM2004TrackingExchange.php';
 		$b_useSuspend = ilUtil::yn2tf($_POST["cobj_suspend"]);
 		$s_pattern = $_POST["Fobject_pattern"];
-		$b_writable = ilUtil::yn2tf($_POST["cobj_writable"]);
-		$b_result = ilSCORM2004TrackingExchange::patternCreate($b_useSuspend, 0, $s_pattern, $b_writable);
+		// $b_writable = ilUtil::yn2tf($_POST["cobj_writable"]);
+		$b_result = ilSCORM2004TrackingExchange::patternCreate($b_useSuspend, 0, $s_pattern);
 		ilUtil::sendSuccess($this->lng->txt("msg_obj_modified"), true);
 		$this->ctrl->redirect($this, "exchangeTrackingPatternCreate");
 
@@ -3034,5 +3052,28 @@ $this->ctrl->redirect($this, "properties");
 		$this->ctrl->redirect($this, "exchangeTrackingSelect&lm=".implode(",",$a_lm_selected));
 	}
 	
+	function deletePatternAndObjectsDataForm()
+	{
+		global $lng, $tpl, $ilTabs, $ilCtrl;
+
+		$ilTabs->clearTargets();
+		$ilTabs->setBackTarget($this->lng->txt('back'),$this->ctrl->getLinkTarget($this,'exchangeTrackingItems'));
+
+		include_once("./Services/Utilities/classes/class.ilConfirmationGUI.php");
+		$confirmation_gui = new ilConfirmationGUI();
+		$confirmation_gui->setFormAction($ilCtrl->getFormAction($this));
+		$confirmation_gui->setHeaderText($this->lng->txt("cont_tracking_exchange_delete_sure"));
+		$confirmation_gui->setCancel($lng->txt("cancel"), "exchangeTrackingItems");
+		$confirmation_gui->setConfirm($lng->txt("confirm"), "confirmedDeletePatternAndObjectsDataForm");
+		$tpl->setContent($confirmation_gui->getHTML());
+	}
+	function confirmedDeletePatternAndObjectsDataForm()
+	{
+		include_once './Modules/Scorm2004/classes/class.ilSCORM2004TrackingExchange.php';
+		ilSCORM2004TrackingExchange::deletePatternAndObjectsData();
+	 	$this->ctrl->redirect($this, "exchangeTrackingItems");
+	}
+
+
 }
 ?>

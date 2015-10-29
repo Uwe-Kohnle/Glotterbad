@@ -50,6 +50,20 @@ class ilSCORM2004TrackingExchange
 		// return false;
 	}
 	
+	function deletePatternAndObjectsData() {
+		global $ilDB;
+	 	$res = $ilDB->queryF(
+			'DELETE FROM sahs_exchange_pattern WHERE obj_id = %s',
+		 	array('integer'),
+		 	array($this->object->getId())
+		);
+	 	$res = $ilDB->queryF(
+			'DELETE FROM sahs_exchange_object WHERE target_obj_id = %s',
+		 	array('integer'),
+		 	array($this->object->getId())
+		);
+	}
+	
 	function getLearningModulesWithPattern() {
 		global $ilDB;
 		$lmTitles = array();
@@ -155,13 +169,13 @@ class ilSCORM2004TrackingExchange
 		return $val_rec;
 	}
 
-	function patternCreate($b_useSuspend, $i_scoId, $s_pattern, $b_writable) {
+	function patternCreate($b_useSuspend, $i_scoId, $s_pattern) {
 		global $ilDB,$ilUser;
 		if ($b_useSuspend == true) $s_pattern=self::getSuspend_data($this->object->getId(),$ilUser->getId());
 		$pattern_ar=self::getPatternEssentials($s_pattern);
 		$i_fields=$pattern_ar["p2_i_counter_fields"];
 		$i_writable = 0;
-		if ($b_writable == true) $i_writable = 1;
+		// if ($b_writable == true) $i_writable = 1;
 		
 	 	$res = $ilDB->queryF(
 			'SELECT sco_id FROM sahs_exchange_pattern WHERE obj_id= %s AND sco_id = %s',
@@ -184,7 +198,6 @@ class ilSCORM2004TrackingExchange
 				array(
 					'pattern'		=> array('text', $s_pattern),
 					'fields'		=> array('integer', $i_fields),
-					'writable'		=> array('integer', $i_writable),
 					'c_timestamp'	=> array('timestamp', ilUtil::now())
 				),
 				array(
@@ -195,6 +208,30 @@ class ilSCORM2004TrackingExchange
 		}
 		return true;
 	}
+
+	function patternPropertiesUpdate($i_scoId, $b_writable) {
+		global $ilDB,$ilUser;
+		$i_writable = 0;
+		if ($b_writable == true) $i_writable = 1;
+		
+		$ilDB->update('sahs_exchange_pattern',
+			array(
+				'writable'		=> array('integer', $i_writable)				),
+			array(
+				'obj_id'		=> array('integer', $this->object->getId()),
+				'sco_id'		=> array('integer', $i_scoId)
+			)
+		);
+		if ($i_writable == 0) {
+			$res = $ilDB->queryF(
+				'DELETE FROM sahs_exchange_object WHERE target_obj_id = %s',
+				array('integer'),
+				array($this->object->getId())
+			);
+		}
+		return true;
+	}
+
 	
 	function n64() {
 		$n64="0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_$";
