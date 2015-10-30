@@ -35,6 +35,18 @@ class ilSCORM2004TrackingExchange
 		return false;
 	}
 	
+	function checkIfLog() {
+		global $ilDB;
+	 	$res = $ilDB->queryF(
+			'SELECT count(*) as counter FROM sahs_exchange_log WHERE obj_id = %s',
+		 	array('integer'),
+		 	array($this->object->getId())
+		);
+		$val_rec = $ilDB->fetchAssoc($res);
+		if ($val_rec["counter"] > 0) return true;
+		return false;
+	}
+	
 	function getSuspend_data($a_obj_id,$a_user_id) {
 		global $ilDB,$ilUser;
 	 	$res = $ilDB->queryF(
@@ -231,6 +243,54 @@ class ilSCORM2004TrackingExchange
 		}
 		return true;
 	}
+	
+	function getLogPatterns() {
+		global $ilDB;
+		$patterns = array();
+	 	$res = $ilDB->queryF(
+			'SELECT pattern, pattern_created FROM sahs_exchange_log WHERE obj_id = %s GROUP BY pattern_created, pattern ORDER BY pattern_created DESC',
+		 	array('integer'),
+		 	array($this->object->getId())
+		);
+		while($row = $ilDB->fetchAssoc($res))
+		{
+			$patterns[] = array($row['pattern_created'],$row['pattern']);
+		}
+		return $patterns;
+	}
+	function getLogSuspendData($pattern_created) {
+		global $ilDB,$ilUser;
+		$suspends = array();
+	 	$res = $ilDB->queryF(
+			'SELECT user_id, suspend_data, c_timestamp, failure FROM sahs_exchange_log WHERE obj_id = %s AND pattern_created = %s ORDER BY c_timestamp DESC',
+		 	array('integer','timestamp'),
+		 	array($this->object->getId(),$pattern_created)
+		);
+		while($row = $ilDB->fetchAssoc($res))
+		{
+			$s_user = "";
+			$user = $row['user_id'];
+			if(ilObject::_exists($user)  && ilObject::_lookUpType($user) == 'usr') {
+				$e_user = new ilObjUser($user);
+				$s_user = $e_user->getLastname() . ', ' . $e_user->getFirstname();
+			}
+			$suspends[] = array($user,$s_user,$row['c_timestamp'],$row['failure'],$row['suspend_data']);
+		}
+		return $suspends;
+	}
+
+	function changeLogFailureEntry($user_id,$c_timestamp,$failure) {
+		global $ilDB;
+		$ilDB->update('sahs_exchange_log',
+			array(
+				'failure'		=> array('integer', $failure)				),
+			array(
+				'obj_id'		=> array('integer', $this->object->getId()),
+				'user_id'		=> array('integer', $user_id),
+				'c_timestamp'	=> array('timestamp', $c_timestamp)
+			)
+		);
+	}
 
 	
 	function n64() {
@@ -251,7 +311,7 @@ class ilSCORM2004TrackingExchange
 		}
 	}
 	function translateFromArticulateWithoutTilde($sa) {
-		if (strlen($sa) == 3) $sa = substr($sa,1);
+		if (strlen($sa) == 3) $sa = substr($sa,1);//?
 		if (strlen($sa) == 2) return (strpos(self::n64(), substr($sa,1,1)) * 64) + strpos(self::n64(), substr($sa,0,1));
 		return strpos(self::n64(), substr($sa,0,1));
 	}
@@ -292,14 +352,17 @@ class ilSCORM2004TrackingExchange
 		$suspend["p1_i_counter_org"] = self::translateFromArticulateWithoutTilde( $suspend["p1_s_counter_org"] );
 		$suspend["p1_content"] = substr($p1,3);
 		$suspend["p2_init"] = "~2";
-		$suspend["p2_s_counter_org"] = substr($p2,2,1);
+		// $suspend["p2_s_counter_org"] = substr($p2,2,1);
+		$suspend["p2_s_counter_org"] = substr($p2,2,2);
 		$suspend["p2_i_counter_org"] = self::translateFromArticulateWithoutTilde( $suspend["p2_s_counter_org"] );
-		$suspend["p2_after_init"] = "22";
+		// $suspend["p2_after_init"] = "22";
+		$suspend["p2_after_init"] = "2";
 		$suspend["p2_content_org"] = substr($p2,5);
 		$suspend["p3"] = $pattern_ar[2];
 		$suspend["p2_content_empty"] = preg_replace('/1\^3#\d\d/','1^',$suspend["p2_content_org"]);
 		$suspend["p2_i_counter_empty"] = strlen($suspend["p2_content_empty"]);
-		$suspend["p2_s_counter_empty"] = self::translateToArticulateWithoutTilde( $suspend["p2_i_counter_empty"] % 64);
+		// $suspend["p2_s_counter_empty"] = self::translateToArticulateWithoutTilde( $suspend["p2_i_counter_empty"] % 64);
+		$suspend["p2_s_counter_empty"] = self::translateToArticulateWithoutTilde( $suspend["p2_i_counter_empty"] );
 		$suspend["p1_i_counter_empty"] = $suspend["p1_i_counter_org"] - strlen($suspend["p2_content_org"]) + strlen($suspend["p2_content_empty"]);
 		$suspend["p1_s_counter_empty"] = self::translateToArticulateWithoutTilde( $suspend["p1_i_counter_empty"] );
 		$suspend["p2_pos"] = array();
@@ -317,7 +380,8 @@ class ilSCORM2004TrackingExchange
 	function createNewSuspend($suspend,$p2_content_new_ar) {
 		
 		$p2_content_new = implode('1^',$p2_content_new_ar);
-		$p2_i_counter_new = strlen($p2_content_new) % 64;
+		// $p2_i_counter_new = strlen($p2_content_new) % 64;
+		$p2_i_counter_new = strlen($p2_content_new);
 		// $p2_i_counter_new = fmod(strlen($p2_content_new), 64);
 		$p2_s_counter_new = self::translateToArticulateWithoutTilde( $p2_i_counter_new);
 
@@ -395,6 +459,33 @@ class ilSCORM2004TrackingExchange
 			'additional_tables'		=> array('integer', 0)
 		);
 		$ilDB->insert('cmi_node', $a_data);
+
+		//only log
+		$pattern="";
+		$pattern_created="";
+		$res = $ilDB->queryF(
+			'SELECT pattern, c_timestamp FROM sahs_exchange_pattern WHERE obj_id = %s',
+			array('integer'),
+			array($objId)
+		);
+		while($row = $ilDB->fetchAssoc($res))
+		{
+			$pattern = $row['pattern'];
+			$pattern_created = $row['c_timestamp'];
+		}
+		if ($pattern != "") {
+			$ilDB->insert('sahs_exchange_log', 
+				array(
+					'obj_id'			=> array('integer', $objId),
+					'user_id'			=> array('integer', $userId),
+					'pattern'			=> array('text', $pattern),
+					'pattern_created'	=> array('timestamp', $pattern_created),
+					'suspend_data'		=> array('clob', $suspend_data),
+					'c_timestamp'		=> array('timestamp', date('Y-m-d H:i:s'))
+				)
+			);
+		}
+
 
 	}
 

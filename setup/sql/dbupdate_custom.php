@@ -108,3 +108,57 @@ if( !$ilDB->tableColumnExists('sahs_exchange_pattern', 'c_timestamp') )
 	);
 }
 ?>
+<#5>
+<?php
+if( !$ilDB->tableExists('sahs_exchange_log') )
+{
+	$ilDB->createTable('sahs_exchange_log',
+		array(
+			"obj_id" => array(
+				"type" => "integer",
+				"length" => 4,
+				"notnull" => true
+			),
+			"sco_id" => array(
+				"type" => "integer",
+				"length" => 4,
+				"notnull" => true,
+				"default" => 0
+			),
+			"user_id" => array(
+				"type" => "integer",
+				"length" => 4,
+				"notnull" => true
+			),
+			"pattern" => array(
+				"type" => "text",
+				"length" => 4000,
+				"notnull" => false
+			),
+			"pattern_created" => array(
+				"type" => "timestamp",
+				"notnull" => false
+			),
+			"suspend_data" => array(
+				"type" => "clob",
+				"notnull" => false
+			),
+			"c_timestamp" => array(
+				"type" => "timestamp",
+				"notnull" => false
+			),
+			"failure" => array(
+				"type" => "integer",
+				"length" => 1,
+				"notnull" => false,
+				"default" => 0
+			),
+			"failure_timestamp" => array(
+				"type" => "timestamp",
+				"notnull" => false
+			)
+		)
+	);
+	$ilDB->addPrimaryKey('sahs_exchange_log',array('obj_id', 'sco_id', 'user_id', 'c_timestamp'));
+}
+?>

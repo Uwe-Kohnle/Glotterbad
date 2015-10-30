@@ -2828,15 +2828,21 @@ $this->ctrl->redirect($this, "properties");
 				);
 			}
 			if ($patternExists && $writable) {
-					$ilToolbar->addButton(
+				$ilToolbar->addButton(
 					$this->lng->txt('cont_tracking_exchange_select'),
 					$this->ctrl->getLinkTarget($this, 'exchangeTrackingSelect')
 				);
 			}
 			if ($patternExists) {
-					$ilToolbar->addButton(
+				$ilToolbar->addButton(
 					$this->lng->txt('cont_tracking_exchange_delete'),
 					$this->ctrl->getLinkTarget($this, 'deletePatternAndObjectsDataForm')
+				);
+			}
+			if (ilSCORM2004TrackingExchange::checkIfLog()) {
+				$ilToolbar->addButton(
+					$this->lng->txt('cont_tracking_exchange_log'),
+					$this->ctrl->getLinkTarget($this, 'exchangeTrackingLog')
 				);
 			}
 
@@ -3074,6 +3080,56 @@ $this->ctrl->redirect($this, "properties");
 	 	$this->ctrl->redirect($this, "exchangeTrackingItems");
 	}
 
+	function exchangeTrackingLog() {
+		global $lng, $tpl, $ilTabs, $ilCtrl;
+
+		$ilTabs->clearTargets();
+		$ilTabs->setBackTarget($this->lng->txt('back'),$this->ctrl->getLinkTarget($this,'exchangeTrackingItems'));
+
+		include_once './Modules/Scorm2004/classes/class.ilSCORM2004TrackingExchange.php';
+		include_once("Services/Form/classes/class.ilPropertyFormGUI.php");
+		$this->form = new ilPropertyFormGUI();
+		$this->form->setFormAction($ilCtrl->getFormAction($this));
+		$this->form->setTitle($this->lng->txt("cont_tracking_exchange_log"));
+		$this->form->setDescription($this->lng->txt("cont_tracking_exchange_log_info"));
+		
+		
+		$a_patterns = ilSCORM2004TrackingExchange::getLogPatterns();
+		for($i=0;$i<count($a_patterns);$i++) {
+			$sh = new ilFormSectionHeaderGUI();
+			$sh->setTitle($this->lng->txt("cont_tracking_exchange_log_pattern_created").' '.$a_patterns[$i][0]);
+			$this->form->addItem($sh);
+			$ti = new ilTextAreaInputGUI($this->lng->txt("cont_tracking_pattern_saved"), "");
+			$ti->setValue($a_patterns[$i][1]);
+			$this->form->addItem($ti);
+			
+			$a_suspends = ilSCORM2004TrackingExchange::getLogSuspendData($a_patterns[$i][0]);
+			for($z=0;$z<count($a_suspends);$z++) {
+				$mlink = str_replace("exchangeTrackingLog", "exchangeTrackingLogFailure&usrid=".$a_suspends[$z][0]
+					."&ts=".urlencode($a_suspends[$z][2])."&failurewas=".$a_suspends[$z][3],$_SERVER['REQUEST_URI']);
+				if ($a_suspends[$z][3] == "1") $message = $this->lng->txt("cont_tracking_failure");
+				else $message = $this->lng->txt("cont_tracking_no_failure");
+				$message .= ' - <a href="'.$mlink.'">' . $this->lng->txt("change") .'</a>';
+				$ti = new ilTextAreaInputGUI($a_suspends[$z][1] . '<br/>' . $a_suspends[$z][2] . '<br/>' . $message, "");
+				$ti->setValue($a_suspends[$z][4]);
+				// $ti->addCommandButton("exchangeTrackingChangeFailure&usrid=".$a_suspends[$z][0]."&failurewas=".$a_suspends[$i][3], $this->lng->txt("cont_tracking_set_failure"));
+				$this->form->addItem($ti);
+			}
+		}
+		$this->tpl->setContent($this->form->getHTML());
+		
+	}
+	
+	function exchangeTrackingLogFailure() {
+		$usrid = (int) $_GET["usrid"];
+		$c_timestamp = urldecode($_GET["ts"]);
+		$failure = 1;
+		if ( (int) $_GET["failurewas"] == 1) $failure = 0;
+		include_once './Modules/Scorm2004/classes/class.ilSCORM2004TrackingExchange.php';
+		ilSCORM2004TrackingExchange::changeLogFailureEntry($usrid,$c_timestamp,$failure);
+	 	$this->ctrl->redirect($this, "exchangeTrackingLog");
+
+	}
 
 }
 ?>
