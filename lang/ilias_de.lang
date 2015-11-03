@@ -15335,3 +15335,7 @@ content#:#cont_tracking_select_field_save#:#Zuordnungen für die Datenübernahme
 content#:#cont_tracking_exchange_delete#:#Musterdatensatz und Zuordnungen löschen
 content#:#cont_tracking_exchange_delete_sure#:#Sind Sie sicher, dass Sie den Musterdatensatz und gegebenenfalls vorhandene Zuordnungen löschen wollen?
 content#:#cont_tracking_exchange_log#:#erzeugte Nutzerdatensätze anzeigen
+content#:#cont_tracking_exchange_log_info#:#Hier werden alle erfolgten Datenübernahmen protokolliert. Sollten Fehler aufgetreten sein, sollten diese gekennzeichnet werden.
+content#:#cont_tracking_exchange_log_pattern_created#:#Musterdatensatz, erzeugt am
+content#:#cont_tracking_failure#:#Fehler
+content#:#cont_tracking_no_failure#:#kein Fehler
