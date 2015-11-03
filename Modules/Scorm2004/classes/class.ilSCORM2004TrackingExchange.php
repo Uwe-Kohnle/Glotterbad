@@ -322,81 +322,133 @@ class ilSCORM2004TrackingExchange
 		}
 	}
 
-	function explodeSuspendToArray($s_suspend) {
-		//need to get 3 parts
-		$pattern_ar = array();
-		$cut10=strpos($s_suspend,'~');
-		$tmp = strpos($s_suspend,'n6XTG');
-		$cut20 = strpos($s_suspend,'~',$tmp);
-		// $cut30 = strlen($s_suspend)-4;
-		$pattern_ar[0] = substr($s_suspend, 0, $cut10);
-		$pattern_ar[1] = substr($s_suspend, $cut10, $cut20-$cut10);
-		$pattern_ar[2] = substr($s_suspend, $cut20);
-		
-		// echo '<br>Gesamtlaenge = '.strlen($s_suspend).', d.h. -3 (Anfang) = '.(strlen($s_suspend)-3).'. Dies entspricht der Pruefsumme '.self::translateFromArticulateWithoutTilde( substr($s_suspend,1,2));
-		// echo '<br>Laenge 1. Teil ohne Pruefsumme = '.strlen($pattern_ar[0]);
-		// $pr1 = self::translateFromArticulateWithoutTilde( substr($s_suspend,$cut10+2,1));
-		// echo '<br>Laenge 2. Teil = '.strlen($pattern_ar[1]). ', d.h. -5 (Anfang) = '.(strlen($pattern_ar[1])-5).'. Dies Entspricht der Pruefsumme (plus Multiplikation von 64: 0,1,2,...)';
-		// for ($i=0;$i<4;$i++) {echo ' '.($pr1+64*$i);}
-		// echo '<br>Laenge 3. Teil = '.strlen($pattern_ar[2]). ', d.h. -4 (Anfang) und -4 (Ende) = '.(strlen($pattern_ar[2])-8).'. Dies Entspricht der Pruefsumme '.self::translateFromArticulateWithoutTilde( substr($s_suspend,$cut20+2,2));
-		return $pattern_ar;
+	function getContentAr($p2) {
+		$field = array();
+		$startPos = 0;
+		$p2Length = strlen($p2);
+		for($i=0; $i<$p2Length; $i++) {
+			if($startPos >= $p2Length) break;
+			if(substr($p2,$startPos,1) == '~') {
+				$lengthAtPos=self::translateFromArticulate3(substr($p2,$startPos,4));
+				$field[$i] = substr($p2,$startPos+4,$lengthAtPos);
+				$startPos = $startPos + 4 + $lengthAtPos;
+			} else {
+				$lengthAtPos=self::translateFromArticulate3(substr($p2,$startPos,1));
+				$field[$i] = substr($p2,$startPos+1,$lengthAtPos);
+				$startPos = $startPos + 1 + $lengthAtPos;
+			}
+		}
+		return $field;
+	}
+
+	function makeContentStringOfContentAr($a_c) {
+		$s_return = "";
+		for ($i=0; $i<count($a_c); $i++) {
+			$s_return .= self::translateToArticulate3(strlen($a_c[$i])) . $a_c[$i];
+		}
+		return $s_return;
 	}
 
 	function getPatternEssentials($s_pattern) {
-		$pattern_ar = self::explodeSuspendToArray($s_pattern);
-		// p0 no more needed
-		$p1 = $pattern_ar[0];
-		$p2 = $pattern_ar[1];
-		$suspend["p1_init"] = "2";
-		$suspend["p1_s_counter_org"] = substr($p1,1,2);
-		$suspend["p1_i_counter_org"] = self::translateFromArticulateWithoutTilde( $suspend["p1_s_counter_org"] );
-		$suspend["p1_content"] = substr($p1,3);
-		$suspend["p2_init"] = "~2";
-		// $suspend["p2_s_counter_org"] = substr($p2,2,1);
-		$suspend["p2_s_counter_org"] = substr($p2,2,2);
-		$suspend["p2_i_counter_org"] = self::translateFromArticulateWithoutTilde( $suspend["p2_s_counter_org"] );
-		// $suspend["p2_after_init"] = "22";
-		$suspend["p2_after_init"] = "2";
-		$suspend["p2_content_org"] = substr($p2,5);
-		$suspend["p3"] = $pattern_ar[2];
-		$suspend["p2_content_empty"] = preg_replace('/1\^3#\d\d/','1^',$suspend["p2_content_org"]);
-		$suspend["p2_i_counter_empty"] = strlen($suspend["p2_content_empty"]);
-		// $suspend["p2_s_counter_empty"] = self::translateToArticulateWithoutTilde( $suspend["p2_i_counter_empty"] % 64);
-		$suspend["p2_s_counter_empty"] = self::translateToArticulateWithoutTilde( $suspend["p2_i_counter_empty"] );
-		$suspend["p1_i_counter_empty"] = $suspend["p1_i_counter_org"] - strlen($suspend["p2_content_org"]) + strlen($suspend["p2_content_empty"]);
-		$suspend["p1_s_counter_empty"] = self::translateToArticulateWithoutTilde( $suspend["p1_i_counter_empty"] );
-		$suspend["p2_pos"] = array();
-		$c_ar = preg_split('/1\^/',$suspend["p2_content_org"]);
-		for ($i=1; $i<count($c_ar); $i++) {
-			if (substr($c_ar[$i],0,2) == "3#") {
-				$suspend["p2_pos"][] = $i;
-				$suspend["p2_c".$i] = substr($c_ar[$i],1,3);
+		$counter_s = array();
+		$counter_i = array();
+		$field = array();
+		$startPos = 3;
+		for($i=0;$i<7;$i++) {
+			if(substr($s_pattern,$startPos,1) == '~') {
+				$counter_s[$i] = substr($s_pattern,$startPos,4);
+				$counter_i[$i]=self::translateFromArticulate3($counter_s[$i]);
+				$field[$i] = substr($s_pattern,$startPos+4,$counter_i[$i]);
+				// echo '<br>'.$counter_s[$i].$field[$i];
+				$startPos = $startPos + 4 + $counter_i[$i];
+			} else {
+				$counter_s[$i] = substr($s_pattern,$startPos,1);
+				$counter_i[$i]=self::translateFromArticulate3($counter_s[$i]);
+				$field[$i] = substr($s_pattern,$startPos+1,$counter_i[$i]);
+				// echo '<br>'.$counter_s[$i].$field[$i];
+				$startPos = $startPos + 1 + $counter_i[$i];
 			}
 		}
+		// $pattern_ar[0] = "" . substr($s_pattern,0,3) . $counter_s[0] . $field[0] . $counter_s[1] . $field[1];
+		// $pattern_ar[1] = "" . $counter_s[2] . $field[2] . $counter_s[3] . $field[3];
+		// $pattern_ar[2] = "" . $counter_s[4] . $field[4] . $counter_s[5] . $field[5] . $counter_s[6] . $field[6];
+		// if (implode($pattern_ar) == $s_pattern) echo 'PASST';
+		// else echo '<hr>'.$s_pattern.'<br>'.implode($pattern_ar).'<hr>';
+
+
+		// p0 no more needed
+		// $p1 = $pattern_ar[0];
+		// $p2 = $pattern_ar[1];
+		// $suspend["p1_init"] = "2";
+		// $suspend["p1_s_counter_org"] = substr($p1,1,2);
+		// $suspend["p1_i_counter_org"] = self::translateFromArticulateWithoutTilde( $suspend["p1_s_counter_org"] );
+		// $suspend["p1_content"] = substr($p1,3);
+		// $suspend["p2_init"] = "~2";
+		// $suspend["p2_s_counter_org"] = substr($p2,2,2);
+		// $suspend["p2_i_counter_org"] = self::translateFromArticulateWithoutTilde( $suspend["p2_s_counter_org"] );
+		// $p2c = substr($p2,4,strlen($p2)-5);
+		// $suspend["p2_content_org"] = substr($p2,4,(strlen($p2)-5));//$p2c;
+		// $suspend["p2_end"] = "0";
+		// $suspend["p3"] = $pattern_ar[2];
+
+		$suspend["p1_init"] = "2";
+		$suspend["p1_s_counter_org"] = substr($s_pattern,1,2);
+		$suspend["p1_i_counter_org"] = self::translateFromArticulateWithoutTilde( $suspend["p1_s_counter_org"] );
+		$suspend["p1_content"] = $counter_s[0] . $field[0] . $counter_s[1] . $field[1];
+		$suspend["p2_s_counter_org"] = $counter_s[2];
+		$suspend["p2_i_counter_org"] = $counter_i[2];//self::translateFromArticulateWithoutTilde( $suspend["p2_s_counter_org"] );
+		$p2c = "" . $field[2];
+		$suspend["p2_content_org"] = "" . $field[2];
+		$suspend["p3"] = "" . $counter_s[3] . $field[3] . $counter_s[4] . $field[4] . $counter_s[5] . $field[5] . $counter_s[6] . $field[6];
+
+		$startPos = 0;
+		$suspend["p2_pos"] = array();
+		$suspend["p2_empty"] = array();
+		$p2cLength = strlen($p2c);
+		for($i=0; $i<$p2cLength; $i++) {
+			if($startPos >= $p2cLength) break;
+			if(substr($p2c,$startPos,1) == '~') {
+				$lengthAtPos=self::translateFromArticulate3(substr($p2c,$startPos,4));
+				$suspend["p2_empty"][$i] = substr($p2c,$startPos+4,$lengthAtPos);
+				$startPos = $startPos + 4 + $lengthAtPos;
+			} else {
+				$lengthAtPos=self::translateFromArticulate3(substr($p2c,$startPos,1));
+				$field = substr($p2c,$startPos+1,$lengthAtPos);
+				if ($lengthAtPos==3 && preg_match('/#\d\d/',$field) != false) {
+					$suspend["p2_empty"][$i] = '^';
+					$suspend["p2_pos"][] = $i;
+					$suspend["p2_c".$i] = $field;
+				} else {
+					$suspend["p2_empty"][$i] = $field;
+				}
+				$startPos = $startPos + 1 + $lengthAtPos;
+			}
+		}
+	
+		// $suspend["p2_content_empty"] = preg_replace('/3#\d\d/','1^',$suspend["p2_content_org"]);
+		$suspend["p2_content_empty"] = self::makeContentStringOfContentAr($suspend["p2_empty"]);
+		// $suspend["p2_i_counter_empty"] = strlen($suspend["p2_content_empty"]);
+		// $suspend["p2_s_counter_empty"] = self::translateToArticulateWithoutTilde( $suspend["p2_i_counter_empty"] );
+		// $suspend["p1_i_counter_empty"] = $suspend["p1_i_counter_org"] - strlen($suspend["p2_content_org"]) + strlen($suspend["p2_content_empty"]);
+		// $suspend["p1_s_counter_empty"] = self::translateToArticulateWithoutTilde( $suspend["p1_i_counter_empty"] );
 		$suspend["p2_i_counter_fields"] = count($suspend["p2_pos"]);
 		return $suspend;
 	}
 	
 	function createNewSuspend($suspend,$p2_content_new_ar) {
 		
-		$p2_content_new = implode('1^',$p2_content_new_ar);
-		// $p2_i_counter_new = strlen($p2_content_new) % 64;
-		$p2_i_counter_new = strlen($p2_content_new);
-		// $p2_i_counter_new = fmod(strlen($p2_content_new), 64);
-		$p2_s_counter_new = self::translateToArticulateWithoutTilde( $p2_i_counter_new);
+		$p2_content_new = self::makeContentStringOfContentAr($p2_content_new_ar);
+		$p2_s_counter_new = self::translateToArticulate3( strlen($p2_content_new) );
 
 		$s_return = "";
 		$s_return .= $suspend["p1_content"];
-		$s_return .= $suspend["p2_init"];
 		$s_return .= $p2_s_counter_new;
-		$s_return .= "".$suspend["p2_after_init"];
-		$s_return .= "".$p2_content_new;
-		$s_return .= "".$suspend["p3"];
+		$s_return .= $p2_content_new;
+		$s_return .= $suspend["p3"];
 
 		$p1_s_counter_new = self::translateToArticulateWithoutTilde( strlen($s_return) );
 		
 		$s_return = $suspend["p1_init"] . $p1_s_counter_new . $s_return;
-		
 		// var_dump($p2_content_new);
 
 		return $s_return; 
@@ -519,19 +571,20 @@ class ilSCORM2004TrackingExchange
 		
 		//get essentials of target
 		$a_t_suspend = self::getPatternEssentials($a_t_pattern["pattern"]);
-		$t_suspend_new_ar = preg_split('/1\^/',$a_t_suspend["p2_content_empty"]);
+		$t_suspend_new_ar = $a_t_suspend["p2_empty"];
 		//get data of sources
-		$a_s_suspend_f=array();
+		// $a_s_suspend_f=array();
 		$a_s_suspend_p=array();
 		foreach($a_s_suspend as $key => $value) {
 			$a_s_suspend_p[$key] = self::getPatternEssentials($value);
 			$tmp=$a_s_suspend_p[$key]["p2_content_org"];
-			$c_ar = preg_split('/1\^/',$tmp);
+			$c_ar = self::getContentAr($tmp);//preg_split('/1\^/',$tmp);
 			// for($i=0;$i<count($a_ex);$)
 			foreach($a_ex as $target=>$source){
 				$tmp_s=explode('.',$source);
 				if ($tmp_s[0]==$key) {
 					$tmp_t=explode('.',$target);
+					// $t_suspend_new_ar[$tmp_t[1]]="hi";
 					$t_suspend_new_ar[$tmp_t[1]]=$c_ar[$tmp_s[1]];
 				}
 			}
