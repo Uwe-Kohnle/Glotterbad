@@ -316,7 +316,7 @@ class ilSCORM2004TrackingExchange
 		return strpos(self::n64(), substr($sa,0,1));
 	}
 	function translateToArticulateWithoutTilde($i2a) {
-		if ($i2a < 64) return self::n64()[$i2a];//substr(n64(), $i2a, 1);
+		if ($i2a < 64) return self::n64()[$i2a];
 		else {
 			return "" . (self::n64()[$i2a%64]) . (self::n64()[$i2a/64]);
 		}
@@ -325,16 +325,16 @@ class ilSCORM2004TrackingExchange
 	function getContentAr($p2) {
 		$field = array();
 		$startPos = 0;
-		$p2Length = strlen($p2);
+		$p2Length = mb_strlen($p2,'UTF-8');
 		for($i=0; $i<$p2Length; $i++) {
 			if($startPos >= $p2Length) break;
 			if(substr($p2,$startPos,1) == '~') {
 				$lengthAtPos=self::translateFromArticulate3(substr($p2,$startPos,4));
-				$field[$i] = substr($p2,$startPos+4,$lengthAtPos);
+				$field[$i] = mb_substr($p2,$startPos+4,$lengthAtPos,'UTF-8');
 				$startPos = $startPos + 4 + $lengthAtPos;
 			} else {
 				$lengthAtPos=self::translateFromArticulate3(substr($p2,$startPos,1));
-				$field[$i] = substr($p2,$startPos+1,$lengthAtPos);
+				$field[$i] = mb_substr($p2,$startPos+1,$lengthAtPos,'UTF-8');
 				$startPos = $startPos + 1 + $lengthAtPos;
 			}
 		}
@@ -344,7 +344,7 @@ class ilSCORM2004TrackingExchange
 	function makeContentStringOfContentAr($a_c) {
 		$s_return = "";
 		for ($i=0; $i<count($a_c); $i++) {
-			$s_return .= self::translateToArticulate3(strlen($a_c[$i])) . $a_c[$i];
+			$s_return .= self::translateToArticulate3(mb_strlen($a_c[$i],'UTF-8')) . $a_c[$i];
 		}
 		return $s_return;
 	}
@@ -358,13 +358,13 @@ class ilSCORM2004TrackingExchange
 			if(substr($s_pattern,$startPos,1) == '~') {
 				$counter_s[$i] = substr($s_pattern,$startPos,4);
 				$counter_i[$i]=self::translateFromArticulate3($counter_s[$i]);
-				$field[$i] = substr($s_pattern,$startPos+4,$counter_i[$i]);
+				$field[$i] = mb_substr($s_pattern,$startPos+4,$counter_i[$i],'UTF-8');
 				// echo '<br>'.$counter_s[$i].$field[$i];
 				$startPos = $startPos + 4 + $counter_i[$i];
 			} else {
 				$counter_s[$i] = substr($s_pattern,$startPos,1);
 				$counter_i[$i]=self::translateFromArticulate3($counter_s[$i]);
-				$field[$i] = substr($s_pattern,$startPos+1,$counter_i[$i]);
+				$field[$i] = mb_substr($s_pattern,$startPos+1,$counter_i[$i],'UTF-8');
 				// echo '<br>'.$counter_s[$i].$field[$i];
 				$startPos = $startPos + 1 + $counter_i[$i];
 			}
@@ -386,8 +386,8 @@ class ilSCORM2004TrackingExchange
 		// $suspend["p2_init"] = "~2";
 		// $suspend["p2_s_counter_org"] = substr($p2,2,2);
 		// $suspend["p2_i_counter_org"] = self::translateFromArticulateWithoutTilde( $suspend["p2_s_counter_org"] );
-		// $p2c = substr($p2,4,strlen($p2)-5);
-		// $suspend["p2_content_org"] = substr($p2,4,(strlen($p2)-5));//$p2c;
+		// $p2c = substr($p2,4,mb_strlen($p2,'UTF-8')-5);
+		// $suspend["p2_content_org"] = substr($p2,4,(mb_strlen($p2,'UTF-8')-5));//$p2c;
 		// $suspend["p2_end"] = "0";
 		// $suspend["p3"] = $pattern_ar[2];
 
@@ -404,16 +404,16 @@ class ilSCORM2004TrackingExchange
 		$startPos = 0;
 		$suspend["p2_pos"] = array();
 		$suspend["p2_empty"] = array();
-		$p2cLength = strlen($p2c);
+		$p2cLength = mb_strlen($p2c,'UTF-8');
 		for($i=0; $i<$p2cLength; $i++) {
 			if($startPos >= $p2cLength) break;
 			if(substr($p2c,$startPos,1) == '~') {
 				$lengthAtPos=self::translateFromArticulate3(substr($p2c,$startPos,4));
-				$suspend["p2_empty"][$i] = substr($p2c,$startPos+4,$lengthAtPos);
+				$suspend["p2_empty"][$i] = mb_substr($p2c,$startPos+4,$lengthAtPos,'UTF-8');
 				$startPos = $startPos + 4 + $lengthAtPos;
 			} else {
 				$lengthAtPos=self::translateFromArticulate3(substr($p2c,$startPos,1));
-				$field = substr($p2c,$startPos+1,$lengthAtPos);
+				$field = mb_substr($p2c,$startPos+1,$lengthAtPos,'UTF-8');
 				if ($lengthAtPos==3 && preg_match('/#\d\d/',$field) != false) {
 					$suspend["p2_empty"][$i] = '^';
 					$suspend["p2_pos"][] = $i;
@@ -427,9 +427,9 @@ class ilSCORM2004TrackingExchange
 	
 		// $suspend["p2_content_empty"] = preg_replace('/3#\d\d/','1^',$suspend["p2_content_org"]);
 		$suspend["p2_content_empty"] = self::makeContentStringOfContentAr($suspend["p2_empty"]);
-		// $suspend["p2_i_counter_empty"] = strlen($suspend["p2_content_empty"]);
+		// $suspend["p2_i_counter_empty"] = mb_strlen($suspend["p2_content_empty"],'UTF-8');
 		// $suspend["p2_s_counter_empty"] = self::translateToArticulateWithoutTilde( $suspend["p2_i_counter_empty"] );
-		// $suspend["p1_i_counter_empty"] = $suspend["p1_i_counter_org"] - strlen($suspend["p2_content_org"]) + strlen($suspend["p2_content_empty"]);
+		// $suspend["p1_i_counter_empty"] = $suspend["p1_i_counter_org"] - mb_strlen($suspend["p2_content_org"],'UTF-8') + mb_strlen($suspend["p2_content_empty"],'UTF-8');
 		// $suspend["p1_s_counter_empty"] = self::translateToArticulateWithoutTilde( $suspend["p1_i_counter_empty"] );
 		$suspend["p2_i_counter_fields"] = count($suspend["p2_pos"]);
 		return $suspend;
@@ -438,7 +438,7 @@ class ilSCORM2004TrackingExchange
 	function createNewSuspend($suspend,$p2_content_new_ar) {
 		
 		$p2_content_new = self::makeContentStringOfContentAr($p2_content_new_ar);
-		$p2_s_counter_new = self::translateToArticulate3( strlen($p2_content_new) );
+		$p2_s_counter_new = self::translateToArticulate3( mb_strlen($p2_content_new,'UTF-8') );
 
 		$s_return = "";
 		$s_return .= $suspend["p1_content"];
@@ -446,7 +446,7 @@ class ilSCORM2004TrackingExchange
 		$s_return .= $p2_content_new;
 		$s_return .= $suspend["p3"];
 
-		$p1_s_counter_new = self::translateToArticulateWithoutTilde( strlen($s_return) );
+		$p1_s_counter_new = self::translateToArticulateWithoutTilde( mb_strlen($s_return,'UTF-8') );
 		
 		$s_return = $suspend["p1_init"] . $p1_s_counter_new . $s_return;
 		// var_dump($p2_content_new);
