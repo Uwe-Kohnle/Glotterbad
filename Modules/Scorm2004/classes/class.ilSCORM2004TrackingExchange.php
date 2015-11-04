@@ -329,11 +329,11 @@ class ilSCORM2004TrackingExchange
 		for($i=0; $i<$p2Length; $i++) {
 			if($startPos >= $p2Length) break;
 			if(substr($p2,$startPos,1) == '~') {
-				$lengthAtPos=self::translateFromArticulate3(substr($p2,$startPos,4));
+				$lengthAtPos=self::translateFromArticulate3(mb_substr($p2,$startPos,4,'UTF-8'));
 				$field[$i] = mb_substr($p2,$startPos+4,$lengthAtPos,'UTF-8');
 				$startPos = $startPos + 4 + $lengthAtPos;
 			} else {
-				$lengthAtPos=self::translateFromArticulate3(substr($p2,$startPos,1));
+				$lengthAtPos=self::translateFromArticulate3(mb_substr($p2,$startPos,1,'UTF-8'));
 				$field[$i] = mb_substr($p2,$startPos+1,$lengthAtPos,'UTF-8');
 				$startPos = $startPos + 1 + $lengthAtPos;
 			}
@@ -436,7 +436,6 @@ class ilSCORM2004TrackingExchange
 	}
 	
 	function createNewSuspend($suspend,$p2_content_new_ar) {
-		
 		$p2_content_new = self::makeContentStringOfContentAr($p2_content_new_ar);
 		$p2_s_counter_new = self::translateToArticulate3( mb_strlen($p2_content_new,'UTF-8') );
 
@@ -575,11 +574,10 @@ class ilSCORM2004TrackingExchange
 		//get data of sources
 		// $a_s_suspend_f=array();
 		$a_s_suspend_p=array();
-		foreach($a_s_suspend as $key => $value) {
+		foreach($a_s_suspend as $key => $value) { //key = slm_id; value=suspend_data
 			$a_s_suspend_p[$key] = self::getPatternEssentials($value);
-			$tmp=$a_s_suspend_p[$key]["p2_content_org"];
-			$c_ar = self::getContentAr($tmp);//preg_split('/1\^/',$tmp);
-			// for($i=0;$i<count($a_ex);$)
+			$tmp=$a_s_suspend_p[$key]["p2_content_org"]; //content
+			$c_ar = self::getContentAr($tmp); //content as array
 			foreach($a_ex as $target=>$source){
 				$tmp_s=explode('.',$source);
 				if ($tmp_s[0]==$key) {
